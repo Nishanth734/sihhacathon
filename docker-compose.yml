@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Neo4j Graph Database - Legal Knowledge Graph for MIDC Statutes (SIH26130)
+  # ---------------------------------------------------------------------------
+  neo4j:
+    image: neo4j:5.18.0-community
+    container_name: udyogsetu-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474" # Neo4j Browser & HTTP REST API
+      - "7687:7687" # Bolt Binary Protocol
+    environment:
+      - NEO4J_AUTH=neo4j/udyogsetu2026
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_memory_heap_initial__size=512m
+      - NEO4J_dbms_memory_heap_max__size=1024m
+      - NEO4J_dbms_memory_pagecache_size=512m
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - udyogsetu-network
+
+  # ---------------------------------------------------------------------------
+  # Node.js / Express Main Backend
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: udyogsetu-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongo:27017/udyogsetu
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=udyogsetu2026
+      - AI_SERVICE_URL=http://ai_service:8000
+      - API_SETU_BASE_URL=https://sandbox.api-setu.in
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+    networks:
+      - udyogsetu-network
+
+  # ---------------------------------------------------------------------------
+  # MongoDB - Application State & Verified Profiles
+  # ---------------------------------------------------------------------------
+  mongo:
+    image: mongo:7.0
+    container_name: udyogsetu-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - udyogsetu-network
+
+  # ---------------------------------------------------------------------------
+  # Python Cognitive Processing & CAD Scrutiny Microservice (LayoutLMv3 + ezdxf)
+  # ---------------------------------------------------------------------------
+  ai_service:
+    build:
+      context: ./ai_service
+      dockerfile: Dockerfile
+    container_name: udyogsetu-ai-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    networks:
+      - udyogsetu-network
+
+networks:
+  udyogsetu-network:
+    driver: bridge
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:
+  mongo_data:

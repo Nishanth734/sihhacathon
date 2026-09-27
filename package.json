@@ -1,0 +1,27 @@
+{
+  "name": "udyogsetu-backend",
+  "version": "1.0.0",
+  "description": "Smart Regulatory Planning & Cognitive Compliance Gateway for SIH26130",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed:graph": "node scripts/seed-knowledge-graph.js",
+    "test": "node test-api.js && node test-compliance.js && node test-mrtps.js",
+    "test:compliance": "node test-compliance.js",
+    "test:mrtps": "node test-mrtps.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.20.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
+    "mongoose": "^9.10.2",
+    "morgan": "^1.12.1",
+    "neo4j-driver": "^6.2.0",
+    "node-cron": "^4.6.0"
+  }
+}
